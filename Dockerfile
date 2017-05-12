@@ -84,6 +84,7 @@ RUN buildDeps=' \
 VOLUME /usr/src/redmine/files
 
 COPY docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
 COPY files_permissions.sh /
 RUN chmod +x /files_permissions.sh
 ENTRYPOINT ["/docker-entrypoint.sh"]
