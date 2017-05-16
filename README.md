@@ -4,7 +4,10 @@ A simple modification from the latest version of https://github.com/docker-libra
 
 ## List of modifications
 
-* Hability to quickly deal with large amounts of files in "files" directory of Redmine application. The original version would spend too much time changing file permissions of ALL already existing Redmine attachments before starting the web server.
+* Hability to quickly deal with large amounts of files in "files" directory of Redmine application. The original version would spend too much time changing file permissions of ALL already existing Redmine attachments before starting the web server. You can now manually trigger the ownership change of files using the command:
+```console
+docker exec -ti redmine bash -c 'exec /files_permissions.sh'
+```
 * Added mail sending with PostFix (felipederodrigues/redmine_cluster:latest_postfix or felipederodrigues/redmine_cluster:passenger_postfix)
 * Fixed Tini to properly deal with Passenger (zombie reaping is now ON!)
 * Set timezone of server to Brazil
