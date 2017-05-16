@@ -15,4 +15,7 @@ RUN set -x \
 	&& passenger-config install-agent \
 	&& passenger-config download-nginx-engine
 
+#This will ensure that zombies get re-parented to Tini despite Tini not running as PID 1.
+ENV TINI_SUBREAPER=
+
 CMD ["passenger", "start"]
