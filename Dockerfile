@@ -80,6 +80,8 @@ RUN buildDeps=' \
 	&& rm ./config/database.yml \
 	&& apt-get purge -y --auto-remove $buildDeps
 
+# Set Correct Specific TimeZone
+RUN sudo ln -sf /usr/share/zoneinfo/Brazil/East /etc/localtime
 
 VOLUME /usr/src/redmine/files
 
