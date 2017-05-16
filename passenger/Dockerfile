@@ -18,4 +18,10 @@ RUN set -x \
 #This will ensure that zombies get re-parented to Tini despite Tini not running as PID 1.
 ENV TINI_SUBREAPER=
 
+# Passenger native support for user redmine
+RUN mkdir -p /usr/local/bundle/gems/passenger-5.1.4/buildout/ruby/ruby-2.2.7-x86_64-linux
+RUN chown redmine /usr/local/bundle/gems/passenger-5.1.4/buildout/ruby/ruby-2.2.7-x86_64-linux
+RUN apt-get update
+RUN apt-get install -y gcc make
+
 CMD ["passenger", "start"]
