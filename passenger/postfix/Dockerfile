@@ -1,6 +1,6 @@
 FROM felipederodrigues/redmine_cluster:passenger
 
-#POSTFIX config based on https://github.com/catatnight/docker-postfix
+#POSTFIX
 
 # Set noninteractive mode for apt-get
 ENV DEBIAN_FRONTEND noninteractive
@@ -8,13 +8,15 @@ ENV DEBIAN_FRONTEND noninteractive
 # Update
 RUN apt-get update
 
-# Start editing
-# Install package here for cache
-RUN apt-get -y install supervisor postfix sasl2-bin opendkim opendkim-tools
+# Install
+RUN apt-get -y install postfix
 
-# Add files
-COPY install.sh /opt
-RUN chmod +x /opt/install.sh
+# Basic Config
+RUN sed -i.bak s/'inet_interfaces = all'/'inet_interfaces = loopback-only'/g /etc/postfix/main.cf 
+RUN sed -i.bak s/'mydestination = 200591939db7, localhost.localdomain, , localhost'/'mydestination = $myhostname, localhost.$mydomain, $mydomain'/g /etc/postfix/main.cf 
 
-# Run
-CMD /opt/install.sh;/usr/bin/supervisord -c /etc/supervisor/supervisord.conf
+# TLS (Encrypt)
+RUN echo 'smtp_tls_security_level = may' >> /etc/postfix/main.cf
+
+# Start REDMINE SERVER
+CMD ["bash" , "-c" , "service postfix stop; service postfix start; /docker-entrypoint.sh passenger start"]
