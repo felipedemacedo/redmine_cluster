@@ -48,14 +48,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV RAILS_ENV production
 WORKDIR /usr/src/redmine
 
-ENV REDMINE_VERSION 3.3.3
-ENV REDMINE_DOWNLOAD_MD5 c946839c9a51dba48ae7c34c5351f677
-
-RUN wget -O redmine.tar.gz "https://www.redmine.org/releases/redmine-${REDMINE_VERSION}.tar.gz" \
-	&& echo "$REDMINE_DOWNLOAD_MD5 redmine.tar.gz" | md5sum -c - \
-	&& tar -xvf redmine.tar.gz --strip-components=1 \
-	&& rm redmine.tar.gz files/delete.me log/delete.me \
-	&& mkdir -p tmp/pdf public/plugin_assets \
+RUN apt-get -qq update \
+	&& apt-get install -qq git -y --no-install-recommends \
+	&& git clone https://github.com/felipedemacedo/redmine_source.git . \
+	&& mkdir -p files log vendor tmp/pdf public/plugin_assets \
 	&& chown -R redmine:redmine ./
 
 RUN buildDeps=' \
