@@ -11,7 +11,12 @@ docker exec -ti redmine bash -c 'exec /files_permissions.sh'
 * Added mail sending with PostFix (felipederodrigues/redmine_cluster:latest_postfix or felipederodrigues/redmine_cluster:passenger_postfix)
 * Fixed Tini to properly deal with Passenger (zombie reaping is now ON!)
 * Set timezone of server to Brazil
-
+* Added Redmine Agile Plugin (https://www.redmineup.com/pages/plugins/agile). To install it:
+```console
+docker exec -ti redmine bash -c 'exec /usr/src/redmine/plugins/install_agile_plugin.sh'
+docker restart redmine
+```
+* Added Passenger native support for Ruby.
 
 ## How to use it
 
