@@ -18,5 +18,8 @@ RUN sed -i.bak s/'mydestination = 200591939db7, localhost.localdomain, , localho
 # TLS (Encrypt)
 RUN echo 'smtp_tls_security_level = may' >> /etc/postfix/main.cf
 
+# Configure Redmine for sendmail
+ADD configuration.yml /usr/src/redmine/config/configuration.yml
+
 # Start REDMINE SERVER
 CMD ["bash" , "-c" , "service postfix stop; service postfix start; /docker-entrypoint.sh passenger start"]
