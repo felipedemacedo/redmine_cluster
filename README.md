@@ -13,7 +13,7 @@ docker exec -ti redmine bash -c 'exec /files_permissions.sh'
 * Set timezone of server to Brazil
 * Added Redmine Agile Plugin (https://www.redmineup.com/pages/plugins/agile). To install it:
 ```console
-docker exec -ti redmine bash -c 'exec /plugins/install_agile_plugin.sh'
+docker exec -ti redmine bash -c 'exec /usr/src/redmine/plugins/install_agile_plugin.sh'
 docker restart redmine
 ```
 * Added Passenger native support for Ruby.
