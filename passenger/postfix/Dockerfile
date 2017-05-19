@@ -22,4 +22,4 @@ RUN echo 'smtp_tls_security_level = may' >> /etc/postfix/main.cf
 ADD configuration.yml /usr/src/redmine/config/configuration.yml
 
 # Start REDMINE SERVER
-CMD ["bash" , "-c" , "service postfix stop; service postfix start; /docker-entrypoint.sh passenger start"]
+CMD ["bash" , "-c" , "service postfix stop; service postfix start; /docker-entrypoint.sh passenger start; tail -f /usr/src/redmine/log/passenger.3000.log"]
