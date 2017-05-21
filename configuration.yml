@@ -64,12 +64,7 @@ default:
   # ==== Sendmail command
   #
   #  email_delivery:
-       delivery_method: :sendmail
-       smtp_settings:
-        address: localhost
-        port: 25
-        domain: my.domain
-        user_name: redmine
+  #    delivery_method: :sendmail
 
   # Absolute path to the directory where attachments are stored.
   # The default is the 'files' directory in your Redmine instance.

@@ -24,4 +24,7 @@ RUN chown redmine /usr/local/bundle/gems/passenger-5.1.4/buildout/ruby/ruby-2.2.
 RUN apt-get update
 RUN apt-get install -y gcc make
 
+# Configure Redmine for load-balancing cluster
+ADD configuration.yml /usr/src/redmine/config/configuration.yml
+
 CMD ["passenger", "start"]
