@@ -87,8 +87,6 @@ COPY files_permissions.sh /
 RUN chmod +x /files_permissions.sh
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
-# Configure Redmine for load-balancing cluster
-ADD configuration.yml /usr/src/redmine/config/configuration.yml
 
 EXPOSE 3000
 CMD ["rails", "server", "-b", "0.0.0.0"]
