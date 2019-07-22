@@ -24,4 +24,6 @@ RUN chown redmine /usr/local/bundle/gems/passenger-5.1.4/buildout/ruby/ruby-2.2.
 RUN apt-get update
 RUN apt-get install -y gcc make
 
-CMD ["passenger", "start"]
+COPY nginx.conf.erb /nginx.conf.erb
+
+CMD ["passenger", "start", "--pid-file", "/usr/src/redmine/passenger.3000.pid", "--nginx-config-template", "/nginx.conf.erb"]
