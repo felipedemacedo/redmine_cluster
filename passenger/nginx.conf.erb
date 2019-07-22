@@ -71,6 +71,14 @@ http {
         # conflict with the ones Passenger already sets.
         # Learn more at:
         # https://www.phusionpassenger.com/library/config/standalone/intro.html#nginx-configuration-template
+        location @static_asset {
+            gzip_static on;
+            expires max;
+            add_header Cache-Control public;
+            add_header ETag "";
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Request-Method *;
+        }
         ### END your own configuration options ###
     }
     passenger_pre_start <%= listen_url(app) %>;
