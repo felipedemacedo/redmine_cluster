@@ -1,80 +1,139 @@
-FROM ruby:2.2-slim
+FROM ruby:2.6-slim-buster
 
-# add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
-RUN groupadd -r redmine && useradd -r -g redmine redmine
+# explicitly set uid/gid to guarantee that it won't change in the future
+# the values 999:999 are identical to the current user/group id assigned
+RUN groupadd -r -g 999 redmine && useradd -r -g redmine -u 999 redmine
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN set -eux; \
+	apt-get update; \
+	apt-get install -y --no-install-recommends \
 		ca-certificates \
 		wget \
-	&& rm -rf /var/lib/apt/lists/*
-
-# grab gosu for easy step-down from root
-ENV GOSU_VERSION 1.7
-RUN set -x \
-	&& wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture)" \
-	&& wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture).asc" \
-	&& export GNUPGHOME="$(mktemp -d)" \
-	&& gpg --keyserver ha.pool.sks-keyservers.net --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4 \
-	&& gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu \
-	&& rm -r "$GNUPGHOME" /usr/local/bin/gosu.asc \
-	&& chmod +x /usr/local/bin/gosu \
-	&& gosu nobody true
-
-# grab tini for signal processing and zombie killing
-ENV TINI_VERSION v0.9.0
-RUN set -x \
-	&& wget -O /usr/local/bin/tini "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini" \
-	&& wget -O /usr/local/bin/tini.asc "https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini.asc" \
-	&& export GNUPGHOME="$(mktemp -d)" \
-	&& gpg --keyserver ha.pool.sks-keyservers.net --recv-keys 6380DC428747F6C393FEACA59A84159D7001A4E5 \
-	&& gpg --batch --verify /usr/local/bin/tini.asc /usr/local/bin/tini \
-	&& rm -r "$GNUPGHOME" /usr/local/bin/tini.asc \
-	&& chmod +x /usr/local/bin/tini \
-	&& tini -h
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-		imagemagick \
-		libmysqlclient18 \
-		libpq5 \
-		libsqlite3-0 \
 		\
 		bzr \
 		git \
 		mercurial \
 		openssh-client \
 		subversion \
-	&& rm -rf /var/lib/apt/lists/*
+		\
+# https://github.com/docker-library/redmine/issues/132
+# (without "gsfonts" we get "Magick::ImageMagickError (non-conforming drawing primitive definition `text' @ error/draw.c/DrawImage/3265):")
+		gsfonts \
+		imagemagick \
+	; \
+	rm -rf /var/lib/apt/lists/*
+
+RUN set -eux; \
+	savedAptMark="$(apt-mark showmanual)"; \
+	apt-get update; \
+	apt-get install -y --no-install-recommends \
+		dirmngr \
+		gnupg \
+	; \
+	rm -rf /var/lib/apt/lists/*; \
+	\
+	dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')"; \
+	\
+# grab gosu for easy step-down from root
+# https://github.com/tianon/gosu/releases
+	export GOSU_VERSION='1.11'; \
+	wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch"; \
+	wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch.asc"; \
+	export GNUPGHOME="$(mktemp -d)"; \
+	gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4; \
+	gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu; \
+	gpgconf --kill all; \
+	rm -r "$GNUPGHOME" /usr/local/bin/gosu.asc; \
+	chmod +x /usr/local/bin/gosu; \
+	gosu nobody true; \
+	\
+# grab tini for signal processing and zombie killing
+# https://github.com/krallin/tini/releases
+	export TINI_VERSION='0.18.0'; \
+	wget -O /usr/local/bin/tini "https://github.com/krallin/tini/releases/download/v$TINI_VERSION/tini-$dpkgArch"; \
+	wget -O /usr/local/bin/tini.asc "https://github.com/krallin/tini/releases/download/v$TINI_VERSION/tini-$dpkgArch.asc"; \
+	export GNUPGHOME="$(mktemp -d)"; \
+	gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys 6380DC428747F6C393FEACA59A84159D7001A4E5; \
+	gpg --batch --verify /usr/local/bin/tini.asc /usr/local/bin/tini; \
+	gpgconf --kill all; \
+	rm -r "$GNUPGHOME" /usr/local/bin/tini.asc; \
+	chmod +x /usr/local/bin/tini; \
+	tini -h; \
+	\
+# reset apt-mark's "manual" list so that "purge --auto-remove" will remove all build dependencies
+	apt-mark auto '.*' > /dev/null; \
+	[ -z "$savedAptMark" ] || apt-mark manual $savedAptMark; \
+	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false
 
 ENV RAILS_ENV production
 WORKDIR /usr/src/redmine
 
-RUN apt-get -qq update \
-	&& apt-get install -qq git -y --no-install-recommends \
-	&& git clone https://github.com/felipedemacedo/redmine_source.git . \
-	&& mkdir -p files log vendor tmp/pdf public/plugin_assets \
-	&& chown -R redmine:redmine ./
+# https://github.com/docker-library/redmine/issues/138#issuecomment-438834176
+# (bundler needs this for running as an arbitrary user)
+ENV HOME /home/redmine
+RUN set -eux; \
+	[ ! -d "$HOME" ]; \
+	mkdir -p "$HOME"; \
+	chown redmine:redmine "$HOME"; \
+	chmod 1777 "$HOME"
 
-RUN buildDeps=' \
+ENV REDMINE_VERSION 4.0.4
+
+RUN set -eux; \
+	apt-get -qq update; \
+	apt-get install -qq git -y --no-install-recommends; \
+	git clone https://github.com/felipedemacedo/redmine_source.git .; \
+	git checkout 4.0.4; \
+	mkdir -p log public/plugin_assets sqlite tmp/pdf tmp/pids vendor files; \
+	chown -R redmine:redmine ./; \
+# log to STDOUT (https://github.com/docker-library/redmine/issues/108)
+	echo 'config.logger = Logger.new(STDOUT)' > config/additional_environment.rb; \
+# fix permissions for running as an arbitrary user
+	chmod -R ugo=rwX config db sqlite; \
+	find log tmp -type d -exec chmod 1777 '{}' +
+
+RUN set -eux; \
+	\
+	savedAptMark="$(apt-mark showmanual)"; \
+	apt-get update; \
+	apt-get install -y --no-install-recommends \
+		freetds-dev \
 		gcc \
 		libmagickcore-dev \
 		libmagickwand-dev \
-		libmysqlclient-dev \
+		libmariadbclient-dev \
 		libpq-dev \
 		libsqlite3-dev \
 		make \
 		patch \
-	' \
-	&& set -ex \
-	&& apt-get update && apt-get install -y $buildDeps --no-install-recommends \
-	&& rm -rf /var/lib/apt/lists/* \
-	&& bundle install --without development test \
-	&& for adapter in mysql2 postgresql sqlite3; do \
+	; \
+	rm -rf /var/lib/apt/lists/*; \
+	\
+	gosu redmine bundle install --without development test; \
+	for adapter in mysql2 postgresql sqlserver sqlite3; do \
 		echo "$RAILS_ENV:" > ./config/database.yml; \
 		echo "  adapter: $adapter" >> ./config/database.yml; \
-		bundle install --without development test; \
-	done \
-	&& rm ./config/database.yml \
-	&& apt-get purge -y --auto-remove $buildDeps
+		gosu redmine bundle install --without development test; \
+		cp Gemfile.lock "Gemfile.lock.${adapter}"; \
+	done; \
+	rm ./config/database.yml; \
+# fix permissions for running as an arbitrary user
+	chmod -R ugo=rwX Gemfile.lock "$GEM_HOME"; \
+	rm -rf ~redmine/.bundle; \
+	\
+# reset apt-mark's "manual" list so that "purge --auto-remove" will remove all build dependencies
+	apt-mark auto '.*' > /dev/null; \
+	[ -z "$savedAptMark" ] || apt-mark manual $savedAptMark; \
+	find /usr/local -type f -executable -exec ldd '{}' ';' \
+		| awk '/=>/ { print $(NF-1) }' \
+		| sort -u \
+		| grep -v '^/usr/local/' \
+		| xargs -r dpkg-query --search \
+		| cut -d: -f1 \
+		| sort -u \
+		| xargs -r apt-mark manual \
+	; \
+	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false
 
 # Set Correct Specific TimeZone
 RUN ln -sf /usr/share/zoneinfo/Brazil/East /etc/localtime
@@ -86,7 +145,6 @@ RUN chmod +x /docker-entrypoint.sh
 COPY files_permissions.sh /
 RUN chmod +x /files_permissions.sh
 ENTRYPOINT ["/docker-entrypoint.sh"]
-
 
 EXPOSE 3000
 CMD ["rails", "server", "-b", "0.0.0.0"]
