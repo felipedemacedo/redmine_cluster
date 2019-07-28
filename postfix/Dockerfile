@@ -1,4 +1,4 @@
-FROM felipederodrigues/redmine_cluster:latest
+FROM felipederodrigues/redmine_cluster:4.0.4
 
 #POSTFIX
 
