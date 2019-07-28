@@ -1,29 +1,35 @@
-FROM felipederodrigues/redmine_cluster:latest
+FROM felipederodrigues/redmine_cluster:4.0.4
 
-ENV PASSENGER_VERSION 5.1.4
+ENV PASSENGER_VERSION 6.0.2
 
-RUN buildDeps=' \
+RUN set -eux; \
+	\
+	savedAptMark="$(apt-mark showmanual)"; \
+	apt-get update; \
+	apt-get install -y --no-install-recommends \
+		gcc \
 		make \
-	' \
-	&& set -x \
-	&& apt-get update && apt-get install -y --no-install-recommends $buildDeps && rm -rf /var/lib/apt/lists/* \
-	&& gem install passenger --version "$PASSENGER_VERSION" \
-	&& apt-get purge -y --auto-remove $buildDeps
+	; \
+	rm -rf /var/lib/apt/lists/*; \
+	\
+	gem install passenger --version "$PASSENGER_VERSION"; \
+# pre-build "passenger_native_support.so" while we have the compiler toolchain available
+	passenger-config build-native-support; \
+# the above command always exits with a zero exit code, but if we run it again and it was successful, it'll have empty output (that's the best way I can find to verify that it's worked)
+	if [ -n "$(passenger-config build-native-support 2>&1)" ]; then cat /tmp/passenger_native_support-*.log; false; fi; \
+	\
+	apt-mark auto '.*' > /dev/null; \
+	[ -z "$savedAptMark" ] || apt-mark manual $savedAptMark; \
+	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false
 
 # pre-download the PassengerAgent and the NGINX engine
-RUN set -x \
-	&& passenger-config install-agent \
-	&& passenger-config download-nginx-engine
+RUN set -eux; \
+	passenger-config install-agent; \
+	passenger-config download-nginx-engine
 
-#This will ensure that zombies get re-parented to Tini despite Tini not running as PID 1.
-ENV TINI_SUBREAPER=
-
-# Passenger native support for user redmine
-RUN mkdir -p /usr/local/bundle/gems/passenger-5.1.4/buildout/ruby/ruby-2.2.7-x86_64-linux
-RUN chown redmine /usr/local/bundle/gems/passenger-5.1.4/buildout/ruby/ruby-2.2.7-x86_64-linux
-RUN apt-get update
-RUN apt-get install -y gcc make
+# adjust Passenger to write the PID to the same file as "rails server"
+ENV PASSENGER_PID_FILE tmp/pids/server.pid
 
 COPY nginx.conf.erb /nginx.conf.erb
 
-CMD ["passenger", "start", "--pid-file", "/usr/src/redmine/passenger.3000.pid", "--nginx-config-template", "/nginx.conf.erb"]
+CMD ["passenger", "start", "--nginx-config-template", "/nginx.conf.erb"]

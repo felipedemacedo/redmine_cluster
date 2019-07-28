@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker build -t felipederodrigues/redmine_cluster:passenger .
+docker build -t felipederodrigues/redmine_cluster:4.0.4_passenger .
